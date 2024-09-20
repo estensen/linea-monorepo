@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
@@ -135,4 +136,37 @@ func TestBuildFromScratch(t *testing.T) {
 	// We should obtain the same roots
 	require.Equal(t, oneByoneTree.Root.Hex(), tree.Root.Hex())
 
+}
+
+func BenchmarkBuildComplete(b *testing.B) {
+	tests := []struct {
+		name string
+		size int
+	}{
+		{name: "1,024 leaves", size: 1024},
+		{name: "16,384 leaves", size: 16384},
+		{name: "131,072 leaves", size: 131072},
+	}
+
+	for _, tc := range tests {
+		b.Run(tc.name, func(b *testing.B) {
+
+			hashFunc := hashtypes.Keccak
+
+			leaves := generateDummyData(tc.size)
+
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_ = smt.BuildComplete(leaves, hashFunc)
+			}
+		})
+	}
+}
+
+func generateDummyData(size int) []types.Bytes32 {
+	data := make([]types.Bytes32, size)
+	for i := 0; i < size; i++ {
+		data[i] = RandBytes32(i)
+	}
+	return data
 }
