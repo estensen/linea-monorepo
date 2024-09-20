@@ -2,6 +2,7 @@ package smt
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
@@ -48,13 +49,23 @@ func EmptyLeaf() types.Bytes32 {
 	return types.Bytes32{}
 }
 
+var hasherPool = sync.Pool{
+	New: func() interface{} {
+		hasher := hashtypes.Keccak()
+		return &hasher
+	},
+}
+
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
-	hasher := config.HashFunc()
-	nodeL.WriteTo(hasher)
-	nodeR.WriteTo(hasher)
-	d := types.AsBytes32(hasher.Sum(nil))
+	hasherPtr := hasherPool.Get().(*hashtypes.Hasher)
+	defer hasherPool.Put(hasherPtr)
+
+	hasherPtr.Reset()
+	nodeL.WriteTo(hasherPtr)
+	nodeR.WriteTo(hasherPtr)
+	d := types.AsBytes32(hasherPtr.Sum(nil))
 	return d
 }
 
